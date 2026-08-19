@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GIS SIER - Frontend UI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="preconnect" href="https://tile.openstreetmap.org" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIINfQZJiRQBClrtqF6miTDX8J7g5j7Jk8E="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="styles.css?v=20260813-1308" />
+  </head>
+  <body>
+    <div class="loading-screen" id="loadingScreen">
+      <div class="loading-card">
+        <img src="assets/logo-gis-sier.png" alt="GIS SIER" />
+        <div class="loading-bar"><span></span></div>
+        <p>Menyiapkan peta kawasan industri...</p>
+      </div>
+    </div>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark"><img src="assets/logo-gis-sier.png" alt="GIS SIER" /></div>
+        </div>
+
+        <label class="search-box">
+          <i data-lucide="search"></i>
+          <input id="searchInput" type="search" placeholder="Cari kavling, blok, atau tenant..." />
+          <kbd>Ctrl K</kbd>
+        </label>
+
+        <div class="top-actions">
+          <button class="icon-text" id="topToggleSidebar" title="Aktifkan sidebar kiri"><i data-lucide="panel-left"></i><span>Sidebar</span></button>
+          <button class="icon-text" id="topToggleDetail" title="Aktifkan panel kanan"><i data-lucide="panel-right"></i><span>Detail</span></button>
+          <button class="icon-text active" id="topToggleToolbar" title="Tampilkan atau sembunyikan toolbar peta"><i data-lucide="wrench"></i><span>Toolbar</span></button>
+          <button class="icon-text active" id="viewModeToggle" title="Ganti public view atau internal ops"><i data-lucide="shield-check"></i><span>Internal</span></button>
+          <button class="icon-text" id="fullscreenMap" title="Aktifkan fullscreen"><i data-lucide="maximize"></i><span>Fullscreen</span></button>
+          <div class="favorite-box">
+            <button class="icon-text" id="toggleFavorites" title="Lihat kavling favorit"><i data-lucide="star"></i><span>Favorit</span><b id="favoriteCount">0</b></button>
+            <div class="favorite-menu" id="favoriteMenu">
+              <strong>Kavling Favorit</strong>
+              <div id="favoriteList" class="favorite-list">
+                <button type="button" disabled>Belum ada favorit</button>
+              </div>
+            </div>
+          </div>
+          <button class="icon-only bell" title="Notifikasi"><i data-lucide="bell"></i></button>
+          <button class="avatar">AD</button>
+          <button class="icon-only" title="Menu"><i data-lucide="chevron-down"></i></button>
+        </div>
+      </header>
+
+      <aside class="sidebar">
+        <div class="panel-title">
+          <strong>Layer Manager</strong>
+          <button class="icon-only" id="collapseSidebar"><i data-lucide="chevron-left"></i></button>
+        </div>
+
+        <section class="panel-section map-style-section">
+          <div class="section-head">
+            <h2>Map Style</h2>
+          </div>
+          <div class="segmented small map-style-options">
+            <button class="active" data-map-style="satellite">Satelit</button>
+            <button data-map-style="dim">Dim</button>
+            <button data-map-style="contrast">Kontras</button>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <div class="section-head">
+            <h2>Layers</h2>
+            <button class="plain" id="resetLayers"><i data-lucide="rotate-ccw"></i> Reset</button>
+          </div>
+          <div class="layer-card">
+            <div class="layer-main">
+              <i data-lucide="star"></i>
+              <span>Status Kavling</span>
+              <label class="switch"><input type="checkbox" checked data-layer="status" /><span></span></label>
+            </div>
+            <div class="legend-inline">
+              <span><b class="dot available"></b>Tersedia</span>
+              <span><b class="dot occupied"></b>Sold</span>
+              <span><b class="dot reserved"></b>Reserved</span>
+            </div>
+          </div>
+          <div id="layerToggles" class="layer-list"></div>
+        </section>
+
+        <section class="panel-section filters">
+          <div class="section-head">
+            <h2>Filters</h2>
+            <button class="plain" id="resetFilters"><i data-lucide="refresh-cw"></i></button>
+          </div>
+
+          <label class="range-control">
+            <span>Luas Lahan (m2)</span>
+            <input id="areaRange" type="range" min="1000" max="25000" value="25000" />
+            <em><span>1.000 m2</span><span>25.000 m2</span></em>
+          </label>
+
+          <div class="segmented" data-filter="power">
+            <button data-value="50">50 KVA</button>
+            <button data-value="100">100 KVA</button>
+            <button class="active" data-value="200">200+ KVA</button>
+          </div>
+
+          <div class="select-row">
+            <label class="price-input">
+              <span>Min Harga / m2</span>
+              <input id="minPrice" type="number" inputmode="numeric" min="0" step="100000" placeholder="Min" />
+            </label>
+            <label class="price-input">
+              <span>Maks Harga / m2</span>
+              <input id="maxPrice" type="number" inputmode="numeric" min="0" step="100000" placeholder="Maks" />
+            </label>
+          </div>
+
+          <span class="mini-label">Legalitas</span>
+          <div class="segmented small" data-filter="legal">
+            <button class="active" data-value="all">Semua</button>
+            <button data-value="hgb">HGB</button>
+            <button data-value="imb">IMB</button>
+          </div>
+
+          <span class="mini-label">Status</span>
+          <div class="segmented small status-filter">
+            <button class="active" data-status="all">Semua</button>
+            <button data-status="available">Tersedia</button>
+            <button data-status="occupied">Sold</button>
+            <button data-status="reserved">Reserved</button>
+          </div>
+        </section>
+
+        <button class="save-filter"><i data-lucide="bookmark"></i> Simpan Filter Saat Ini</button>
+      </aside>
+
+      <main class="map-area">
+        <div class="stats-strip">
+          <button data-stat-status="available"><strong>42</strong><span>Available</span></button>
+          <button data-stat-status="reserved"><strong>18</strong><span>Reserved</span></button>
+          <button data-stat-status="occupied"><strong>96</strong><span>Occupied</span></button>
+          <button data-stat-status="all"><strong>18.4 Ha</strong><span>Available Land</span></button>
+        </div>
+
+        <div class="ops-strip" id="opsStrip">
+          <button type="button" data-ops-focus="contract"><i data-lucide="calendar-clock"></i><strong id="ewsContractCount">0</strong><span>Kontrak kritis</span></button>
+          <button type="button" data-ops-focus="maintenance"><i data-lucide="wrench"></i><strong id="ewsMaintenanceCount">0</strong><span>Maintenance</span></button>
+          <button type="button" data-ops-focus="utility"><i data-lucide="cable"></i><strong id="ewsUtilityCount">0</strong><span>Need utilitas</span></button>
+        </div>
+
+        <div id="map"></div>
+
+        <button id="compassReset" class="compass" type="button" title="Reset orientasi utara" aria-label="Reset orientasi utara">
+          <span class="compass-cardinal compass-n">N</span>
+          <span class="compass-cardinal compass-e">E</span>
+          <span class="compass-cardinal compass-s">S</span>
+          <span class="compass-cardinal compass-w">W</span>
+          <span class="compass-needle" aria-hidden="true">
+            <span class="needle-head"></span>
+            <span class="needle-tail"></span>
+          </span>
+          <span class="compass-center" aria-hidden="true"></span>
+        </button>
+
+        <div class="map-tools">
+          <button id="zoomIn" title="Perbesar peta" aria-label="Perbesar peta"><i data-lucide="plus"></i></button>
+          <button id="zoomOut" title="Perkecil peta" aria-label="Perkecil peta"><i data-lucide="minus"></i></button>
+          <button id="locate" title="Fokus ke kawasan aktif" aria-label="Fokus ke kawasan aktif"><i data-lucide="crosshair"></i></button>
+          <button id="rotateNorth" title="Reset orientasi utara" aria-label="Reset orientasi utara"><i data-lucide="compass"></i></button>
+          <button id="measureTool" title="Ukur jarak manual" aria-label="Ukur jarak manual"><i data-lucide="ruler"></i></button>
+          <button id="undoMeasure" title="Undo pengukuran" aria-label="Undo pengukuran"><i data-lucide="undo-2"></i></button>
+          <button id="redoMeasure" title="Redo pengukuran" aria-label="Redo pengukuran"><i data-lucide="redo-2"></i></button>
+          <button id="clearMeasures" title="Hapus semua pengukuran" aria-label="Hapus semua pengukuran"><i data-lucide="trash-2"></i></button>
+          <button id="toggleMapLayers" title="Buka atau tutup layer manager" aria-label="Buka atau tutup layer manager"><i data-lucide="layers"></i></button>
+        </div>
+
+        <div id="lotPopup" class="lot-popup"></div>
+
+        <div class="breadcrumb">
+          <i data-lucide="map-pin"></i>
+          <button id="openEstateMenu" class="crumb-button">Kawasan</button>
+          <i data-lucide="chevron-right"></i>
+          <button id="cycleEstate" class="crumb-button">SIER</button>
+          <button id="toggleBreadcrumb"><i data-lucide="chevron-up"></i></button>
+        </div>
+        <div class="estate-menu" id="estateMenu">
+          <button data-estate="sier">SIER Rungkut</button>
+          <button data-estate="berbek">SIER Berbek</button>
+          <button data-estate="pier">PIER Pasuruan</button>
+        </div>
+
+        <button class="edge-toggle left" id="toggleSidebarPanel"><i data-lucide="chevron-left"></i></button>
+        <button class="edge-toggle right" id="toggleDetailPanel"><i data-lucide="chevron-right"></i></button>
+        <div class="utility-legend" id="utilityLegend">
+          <strong>Legenda Peta</strong>
+          <span><b class="area boundary"></b>Batas kawasan</span>
+          <span><b class="area available"></b>Kavling tersedia</span>
+          <span><b class="area reserved"></b>Kavling reserved</span>
+          <span><b class="area occupied"></b>Kavling sold</span>
+          <span><b class="line electric"></b>Jalur listrik</span>
+          <span><b class="line gas"></b>Jalur gas</span>
+          <span><b class="line water"></b>Jalur air bersih</span>
+          <span><b class="line drain"></b>Jalur drainase</span>
+          <span><b class="line fiber"></b>Jalur fiber optik</span>
+          <span><b class="pin utility"></b>Pusat utilitas</span>
+          <span><b class="line measure"></b>Garis ukur jarak</span>
+          <span><b class="area contract"></b>EWS kontrak</span>
+          <span><b class="pin maintenance"></b>Maintenance</span>
+          <span><b class="pin iot"></b>IoT / gate</span>
+        </div>
+        <button class="legend-button" id="toggleLegend"><span><b class="dot available"></b><b class="dot reserved"></b><b class="dot occupied"></b></span>Legenda <i data-lucide="chevron-down"></i></button>
+      </main>
+
+      <aside class="detail-panel">
+        <div class="detail-head">
+          <div>
+            <h1 id="detailName">Kavling A-01</h1>
+            <span id="detailBadge" class="badge available">Tersedia</span>
+          </div>
+          <button class="icon-only" id="favoriteLot" title="Tambah ke favorit" aria-label="Tambah ke favorit"><i data-lucide="star"></i></button>
+        </div>
+
+        <nav class="tabs">
+          <button class="active" data-tab="overview">Overview</button>
+          <button data-tab="legal">Legal & Dokumen</button>
+          <button data-tab="utilities">Utilitas</button>
+          <button data-tab="operations">Operasional</button>
+        </nav>
+
+        <div class="photo detail-tab-panel" data-tab-panel="overview">
+          <button class="photo-nav prev" id="prevPhoto" aria-label="Gambar sebelumnya"><i data-lucide="chevron-left"></i></button>
+          <img id="overviewPhoto" src="assets/sier-aerial-masterplan.png" alt="Kawasan industri SIER" />
+          <button class="photo-nav next" id="nextPhoto" aria-label="Gambar berikutnya"><i data-lucide="chevron-right"></i></button>
+          <span id="photoCounter">1/10</span>
+        </div>
+
+        <section class="detail-section detail-tab-panel" data-tab-panel="overview">
+          <h2>Spesifikasi Lahan</h2>
+          <dl id="specList"></dl>
+        </section>
+
+        <section class="detail-section detail-tab-panel is-hidden" data-tab-panel="legal">
+          <h2>Checklist Legalitas</h2>
+          <ul class="legal-checklist">
+            <li class="complete"><i data-lucide="check-circle-2"></i><span>HGB Induk Kawasan</span><strong>Ada</strong></li>
+            <li class="complete"><i data-lucide="check-circle-2"></i><span>Siteplan Kavling</span><strong>Ada</strong></li>
+            <li class="complete"><i data-lucide="check-circle-2"></i><span>IMB / PBG Kawasan</span><strong>Ada</strong></li>
+            <li class="complete"><i data-lucide="check-circle-2"></i><span>AMDAL / UKL-UPL</span><strong>Ada</strong></li>
+            <li class="pending"><i data-lucide="clock-3"></i><span>SHGB Pecahan Kavling</span><strong>Proses</strong></li>
+          </ul>
+        </section>
+
+        <section class="detail-section detail-tab-panel is-hidden" data-tab-panel="legal">
+          <h2>Dokumen Tersedia</h2>
+          <ul class="document-list legal-docs">
+            <li><i data-lucide="file-check-2"></i><span>HGB Induk Kawasan</span><div><button data-doc-action="preview">Preview</button><button data-doc-action="download">Download</button></div></li>
+            <li><i data-lucide="file-text"></i><span>Siteplan Kavling</span><div><button data-doc-action="preview">Preview</button><button data-doc-action="download">Download</button></div></li>
+            <li><i data-lucide="file-badge"></i><span>IMB / PBG Kawasan</span><div><button data-doc-action="preview">Preview</button><button data-doc-action="download">Download</button></div></li>
+            <li><i data-lucide="clipboard-check"></i><span>AMDAL & UKL-UPL</span><div><button data-doc-action="preview">Preview</button><button data-doc-action="download">Download</button></div></li>
+          </ul>
+        </section>
+
+        <section class="detail-section detail-tab-panel is-hidden" data-tab-panel="utilities">
+          <h2>Utilitas</h2>
+          <ul id="utilityList" class="info-list"></ul>
+        </section>
+
+        <section class="detail-section detail-tab-panel is-hidden" data-tab-panel="utilities">
+          <h2>Jaringan Utilitas Kawasan</h2>
+          <ul class="document-list utility-docs">
+            <li><i data-lucide="zap"></i><span>Koridor listrik 20kV</span><strong>Aktif</strong></li>
+            <li><i data-lucide="flame"></i><span>Pipa gas PGN</span><strong>Tersedia</strong></li>
+            <li><i data-lucide="waves"></i><span>Saluran drainase utama</span><strong>Terhubung</strong></li>
+            <li><i data-lucide="wifi"></i><span>Fiber optik backbone</span><strong>1Gbps</strong></li>
+          </ul>
+        </section>
+
+        <section class="detail-section detail-tab-panel is-hidden" data-tab-panel="utilities">
+          <div class="section-title-row">
+            <h2>Hasil Pengukuran</h2>
+            <button id="clearMeasureList" type="button">Hapus Semua</button>
+          </div>
+          <ul id="measurementList" class="measurement-list">
+            <li class="empty">Belum ada pengukuran. Aktifkan ikon penggaris, klik titik awal dan belokan, lalu klik centang untuk menyimpan.</li>
+          </ul>
+        </section>
+
+        <section class="detail-section detail-tab-panel is-hidden" data-tab-panel="operations">
+          <h2>Tenant & Kontrak</h2>
+          <ul id="tenantOpsList" class="ops-list"></ul>
+        </section>
+
+        <section class="detail-section detail-tab-panel is-hidden" data-tab-panel="operations">
+          <h2>EWS Maintenance</h2>
+          <ul id="maintenanceOpsList" class="ops-list"></ul>
+        </section>
+
+        <section class="detail-section detail-tab-panel is-hidden" data-tab-panel="operations">
+          <h2>IoT, Gate & Utilitas</h2>
+          <ul id="iotOpsList" class="ops-list"></ul>
+        </section>
+
+        <section class="detail-section detail-tab-panel is-hidden" data-tab-panel="operations">
+          <h2>Supporting Finance</h2>
+          <ul id="financeOpsList" class="ops-list"></ul>
+        </section>
+
+        <section class="detail-section detail-tab-panel" data-tab-panel="overview">
+          <h2>Akses & Logistik</h2>
+          <ul class="info-list">
+            <li><i data-lucide="route"></i><span>Gerbang Tol Terdekat</span><strong>2,3 km (3 menit)</strong></li>
+            <li><i data-lucide="ship"></i><span>Pelabuhan Tanjung Perak</span><strong>24 km (35 menit)</strong></li>
+            <li><i data-lucide="plane"></i><span>Bandara Juanda</span><strong>10 km (20 menit)</strong></li>
+          </ul>
+        </section>
+
+        <div class="detail-actions">
+          <button class="primary"><i data-lucide="phone-call"></i>Hubungi Sales</button>
+          <button class="secondary"><i data-lucide="clipboard-list"></i>Request Quotation</button>
+          <button class="secondary" id="shareLot"><i data-lucide="share-2"></i>Share</button>
+          <button class="secondary" id="exportLot"><i data-lucide="download"></i>Export</button>
+        </div>
+      </aside>
+    </div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+    <script src="app.js?v=20260813-1308"></script>
+  </body>
+</html>
